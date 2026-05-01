@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pomello</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+
+    <header>
+      <div class="logo">
+        <div class="logo-icon">🍋</div>
+        <span>Pomello</span>
+      </div>
+      <div class="header-controls">
+        <button class="icon-btn" id="theme-toggle" title="Toggle theme">
+          <svg id="theme-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+        </button>
+        <button class="icon-btn" id="settings-btn" title="Settings">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <div class="mode-tabs">
+      <button class="tab active" data-mode="work">Pomodoro</button>
+      <button class="tab" data-mode="shortBreak">Short Break</button>
+      <button class="tab" data-mode="longBreak">Long Break</button>
+    </div>
+
+    <div class="timer-card">
+      <div class="timer-container">
+        <svg class="timer-svg" viewBox="0 0 240 240">
+          <circle class="ring-track" cx="120" cy="120" r="100"/>
+          <circle class="ring-progress" id="ring-progress" cx="120" cy="120" r="100"
+            stroke-dasharray="628.318" stroke-dashoffset="0"/>
+        </svg>
+        <div class="timer-inner">
+          <div class="timer-time" id="time-display">25:00</div>
+          <div class="timer-label" id="mode-label">Focus Time</div>
+        </div>
+      </div>
+
+      <div class="current-task-bar" id="current-task-bar">
+        <div class="current-task-pip"></div>
+        <span class="current-task-text" id="current-task-text"></span>
+      </div>
+
+      <div class="timer-controls">
+        <button class="btn-skip" id="skip-btn" title="Skip">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M6 18V6l8.5 6L6 18zm9 0V6h2v12h-2z"/>
+          </svg>
+        </button>
+        <button class="btn-start" id="start-btn">Start</button>
+        <div style="width:40px"></div>
+      </div>
+
+      <div class="session-dots" id="session-dots"></div>
+    </div>
+
+    <div class="task-card">
+      <div class="task-header">
+        <h2>Tasks</h2>
+        <div class="task-menu-wrapper">
+          <button class="btn-ghost btn-ghost--icon" id="task-menu-btn" title="Clear tasks">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="3 6 5 6 21 6"/>
+              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+              <path d="M10 11v6M14 11v6"/>
+              <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+            </svg>
+          </button>
+          <div class="task-dropdown" id="task-dropdown">
+            <button class="dropdown-item" id="clear-completed">Clear completed</button>
+            <button class="dropdown-item dropdown-item--danger" id="clear-all">Clear all</button>
+          </div>
+        </div>
+      </div>
+      <div class="task-input-row">
+        <input type="text" class="task-input" id="task-input" placeholder="What are you working on?" maxlength="120" autocomplete="off">
+        <button class="btn-add" id="add-task-btn">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <line x1="12" y1="5" x2="12" y2="19"/>
+            <line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+        </button>
+      </div>
+      <div class="task-list" id="task-list">
+        <div class="empty-state" id="empty-state">
+          <div class="empty-icon">🎯</div>
+          <p>No tasks yet — add one above</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Settings</h2>
+        <button class="icon-btn" id="close-modal">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-label">Time (minutes)</div>
+        <div class="duration-inputs">
+          <div class="duration-field">
+            <input type="number" class="duration-input" id="setting-work" min="1" max="60" value="25">
+            <span>Pomodoro</span>
+          </div>
+          <div class="duration-field">
+            <input type="number" class="duration-input" id="setting-short" min="1" max="30" value="5">
+            <span>Short Break</span>
+          </div>
+          <div class="duration-field">
+            <input type="number" class="duration-input" id="setting-long" min="1" max="60" value="15">
+            <span>Long Break</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-label">Long break after</div>
+        <div class="interval-row">
+          <input type="number" class="duration-input small" id="setting-interval" min="1" max="10" value="4">
+          <span class="interval-unit">pomodoros</span>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-label">Accent Color</div>
+        <div class="color-row">
+          <div class="color-swatch-wrapper">
+            <div class="color-swatch" id="color-swatch"></div>
+            <input type="color" id="color-input" value="#7C3AED">
+          </div>
+          <span class="color-hint">Click swatch to change</span>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-cancel" id="cancel-settings">Cancel</button>
+        <button class="btn-save" id="save-settings">Save Settings</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
