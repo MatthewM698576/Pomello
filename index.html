@@ -67,6 +67,7 @@
       </div>
 
       <div class="session-dots" id="session-dots"></div>
+      <button class="btn-focus-mode" id="focus-mode-btn">Focus Mode</button>
     </div>
 
     <div class="task-card">
@@ -144,13 +145,67 @@
       </div>
 
       <div class="settings-section">
-        <div class="settings-label">Accent Color</div>
-        <div class="color-row">
-          <div class="color-swatch-wrapper">
-            <div class="color-swatch" id="color-swatch"></div>
-            <input type="color" id="color-input" value="#7C3AED">
+        <div class="settings-label">Mode Colors</div>
+        <div class="mode-colors">
+          <div class="mode-color-item">
+            <div class="color-swatch-sm-wrapper">
+              <div class="color-swatch-sm" id="focus-swatch"></div>
+              <input type="color" id="focus-color" value="#7C3AED">
+            </div>
+            <span>Focus</span>
           </div>
-          <span class="color-hint">Click swatch to change</span>
+          <div class="mode-color-item">
+            <div class="color-swatch-sm-wrapper">
+              <div class="color-swatch-sm" id="short-break-swatch"></div>
+              <input type="color" id="short-break-color" value="#0D9488">
+            </div>
+            <span>Short Break</span>
+          </div>
+          <div class="mode-color-item">
+            <div class="color-swatch-sm-wrapper">
+              <div class="color-swatch-sm" id="long-break-swatch"></div>
+              <input type="color" id="long-break-color" value="#4F46E5">
+            </div>
+            <span>Long Break</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-row">
+          <div>
+            <div class="settings-label" style="margin-bottom:2px">Auto-start</div>
+            <div class="settings-sublabel">Begin next session automatically</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="setting-autostart">
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-label">Alarm Sound</div>
+        <div class="sound-options" id="sound-options">
+          <button class="sound-btn selected" data-sound="chime">Chime</button>
+          <button class="sound-btn" data-sound="bell">Bell</button>
+          <button class="sound-btn" data-sound="digital">Digital</button>
+          <button class="sound-btn" data-sound="ding">Ding</button>
+          <button class="btn-preview" id="preview-sound" title="Preview sound">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+              <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-label">Timer Style</div>
+        <div class="style-options">
+          <button class="style-btn selected" data-style="ring">Ring</button>
+          <button class="style-btn" data-style="minimal">Minimal</button>
         </div>
       </div>
 
