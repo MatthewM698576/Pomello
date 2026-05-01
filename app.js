@@ -7,7 +7,12 @@ const DEFAULT_SETTINGS = {
   shortBreak: 5,
   longBreak: 15,
   longBreakInterval: 4,
-  accentColor: '#7C3AED',
+  focusColor: '#7C3AED',
+  shortBreakColor: '#0D9488',
+  longBreakColor: '#4F46E5',
+  autoStart: false,
+  alarmSound: 'chime',
+  timerStyle: 'ring',
 };
 
 // ─── State ────────────────────────────────────────────────────────────────────
@@ -20,7 +25,11 @@ let timeLeft = settings.workDuration * 60;
 let totalTime = settings.workDuration * 60;
 let isRunning = false;
 let intervalId = null;
+let startTimestamp = null;
+let startTimeLeft = null;
+let autoStartCountdownId = null;
 let pomodorosCompleted = 0;
+let focusModeActive = false;
 let cyclePomos = 0;
 let currentTaskId = null;
 
@@ -50,8 +59,18 @@ const $sWork       = document.getElementById('setting-work');
 const $sShort      = document.getElementById('setting-short');
 const $sLong       = document.getElementById('setting-long');
 const $sInterval   = document.getElementById('setting-interval');
-const $colorInput      = document.getElementById('color-input');
-const $colorSwatch     = document.getElementById('color-swatch');
+const $focusSwatch      = document.getElementById('focus-swatch');
+const $shortBreakSwatch = document.getElementById('short-break-swatch');
+const $longBreakSwatch  = document.getElementById('long-break-swatch');
+const $focusColor       = document.getElementById('focus-color');
+const $shortBreakColor  = document.getElementById('short-break-color');
+const $longBreakColor   = document.getElementById('long-break-color');
+const $autoStart        = document.getElementById('setting-autostart');
+const $soundOptions     = document.getElementById('sound-options');
+const $previewSound     = document.getElementById('preview-sound');
+const $styleOptions     = document.querySelector('.style-options');
+const $focusModeBtn     = document.getElementById('focus-mode-btn');
+const $taskCard         = document.querySelector('.task-card');
 const $taskMenuBtn     = document.getElementById('task-menu-btn');
 const $taskDropdown    = document.getElementById('task-dropdown');
 const $currentTaskBar  = document.getElementById('current-task-bar');
@@ -62,15 +81,22 @@ const $currentTaskText = document.getElementById('current-task-text');
 function init() {
   $html.setAttribute('data-theme', theme);
   applyThemeIcon();
-  applyAccent(settings.accentColor);
-  $colorInput.value = settings.accentColor;
-  $colorSwatch.style.background = settings.accentColor;
+  applyModeColor(mode);
+  applyTimerStyle(settings.timerStyle);
 
   updateDisplay();
   setRingInstant(1);
   renderDots();
   renderTasks();
   renderCurrentTask();
+}
+
+function modeColor(m) {
+  return { work: settings.focusColor, shortBreak: settings.shortBreakColor, longBreak: settings.longBreakColor }[m];
+}
+
+function applyModeColor(m) {
+  applyAccent(modeColor(m));
 }
 
 // ─── Theme ────────────────────────────────────────────────────────────────────
@@ -107,11 +133,12 @@ function applyAccent(hex) {
   $html.style.setProperty('--accent-rgb', `${r}, ${g}, ${b}`);
 }
 
-$colorSwatch.addEventListener('click', () => $colorInput.click());
-
-$colorInput.addEventListener('input', e => {
-  $colorSwatch.style.background = e.target.value;
-});
+// Mode color swatches
+[[$focusSwatch, $focusColor], [$shortBreakSwatch, $shortBreakColor], [$longBreakSwatch, $longBreakColor]]
+  .forEach(([swatch, input]) => {
+    swatch.addEventListener('click', () => input.click());
+    input.addEventListener('input', () => { swatch.style.background = input.value; });
+  });
 
 // ─── Mode Tabs ────────────────────────────────────────────────────────────────
 
@@ -123,6 +150,7 @@ $tabs.forEach(tab => {
 
 function switchMode(newMode) {
   if (intervalId) clearInterval(intervalId);
+  if (autoStartCountdownId) { clearInterval(autoStartCountdownId); autoStartCountdownId = null; }
   isRunning = false;
   mode = newMode;
 
@@ -135,6 +163,7 @@ function switchMode(newMode) {
   totalTime = durations[mode] * 60;
   timeLeft  = totalTime;
 
+  applyModeColor(mode);
   $tabs.forEach(t => t.classList.toggle('active', t.dataset.mode === mode));
   updateDisplay();
   setRingInstant(1);
@@ -144,6 +173,13 @@ function switchMode(newMode) {
 // ─── Timer ────────────────────────────────────────────────────────────────────
 
 $startBtn.addEventListener('click', () => {
+  if (autoStartCountdownId) {
+    clearInterval(autoStartCountdownId);
+    autoStartCountdownId = null;
+    updateDisplay();
+    updateStartBtn();
+    return;
+  }
   isRunning ? pauseTimer() : startTimer();
 });
 
@@ -167,8 +203,10 @@ $skipBtn.addEventListener('click', () => {
 
 function startTimer() {
   isRunning = true;
+  startTimestamp = Date.now();
+  startTimeLeft = timeLeft;
   updateStartBtn();
-  intervalId = setInterval(tick, 1000);
+  intervalId = setInterval(tick, 500);
 }
 
 function pauseTimer() {
@@ -178,16 +216,22 @@ function pauseTimer() {
 }
 
 function tick() {
+  const elapsed = Math.floor((Date.now() - startTimestamp) / 1000);
+  timeLeft = Math.max(0, startTimeLeft - elapsed);
+  updateDisplay();
+  animateRing(timeLeft / totalTime);
+
   if (timeLeft <= 0) {
     clearInterval(intervalId);
     isRunning = false;
     onSessionComplete();
-    return;
   }
-  timeLeft--;
-  updateDisplay();
-  animateRing(timeLeft / totalTime);
 }
+
+// Recalculate immediately when tab comes back into focus
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && isRunning) tick();
+});
 
 function onSessionComplete() {
   playAlarm();
@@ -217,6 +261,25 @@ function onSessionComplete() {
   } else {
     switchMode('work');
   }
+
+  if (settings.autoStart) beginAutoStart();
+}
+
+function beginAutoStart() {
+  let secs = 3;
+  $startBtn.textContent = 'Cancel';
+  $modeLabel.textContent = `Starting in ${secs}…`;
+
+  autoStartCountdownId = setInterval(() => {
+    secs--;
+    if (secs <= 0) {
+      clearInterval(autoStartCountdownId);
+      autoStartCountdownId = null;
+      startTimer();
+    } else {
+      $modeLabel.textContent = `Starting in ${secs}…`;
+    }
+  }, 1000);
 }
 
 function updateStartBtn() {
@@ -424,8 +487,21 @@ function openSettings() {
   $sShort.value    = settings.shortBreak;
   $sLong.value     = settings.longBreak;
   $sInterval.value = settings.longBreakInterval;
-  $colorInput.value = settings.accentColor;
-  $colorSwatch.style.background = settings.accentColor;
+
+  $focusColor.value      = settings.focusColor;      $focusSwatch.style.background      = settings.focusColor;
+  $shortBreakColor.value = settings.shortBreakColor; $shortBreakSwatch.style.background = settings.shortBreakColor;
+  $longBreakColor.value  = settings.longBreakColor;  $longBreakSwatch.style.background  = settings.longBreakColor;
+
+  $autoStart.checked = settings.autoStart;
+
+  pendingSound = settings.alarmSound;
+  $soundOptions.querySelectorAll('.sound-btn').forEach(b =>
+    b.classList.toggle('selected', b.dataset.sound === pendingSound));
+
+  pendingTimerStyle = settings.timerStyle;
+  $styleOptions.querySelectorAll('.style-btn').forEach(b =>
+    b.classList.toggle('selected', b.dataset.style === pendingTimerStyle));
+
   $overlay.classList.add('open');
 }
 
@@ -437,24 +513,29 @@ $saveBtn.addEventListener('click', () => {
   const clamp = (val, min, max) => Math.max(min, Math.min(max, parseInt(val) || min));
 
   const newSettings = {
-    workDuration:       clamp($sWork.value,     1, 60),
-    shortBreak:         clamp($sShort.value,    1, 30),
-    longBreak:          clamp($sLong.value,     1, 60),
-    longBreakInterval:  clamp($sInterval.value, 1, 10),
-    accentColor:        $colorInput.value,
+    workDuration:      clamp($sWork.value,     1, 60),
+    shortBreak:        clamp($sShort.value,    1, 30),
+    longBreak:         clamp($sLong.value,     1, 60),
+    longBreakInterval: clamp($sInterval.value, 1, 10),
+    focusColor:        $focusColor.value,
+    shortBreakColor:   $shortBreakColor.value,
+    longBreakColor:    $longBreakColor.value,
+    autoStart:         $autoStart.checked,
+    alarmSound:        pendingSound,
+    timerStyle:        pendingTimerStyle,
   };
 
   const intervalChanged = newSettings.longBreakInterval !== settings.longBreakInterval;
   settings = newSettings;
   saveSettings();
-  applyAccent(settings.accentColor);
+  applyModeColor(mode);
+  applyTimerStyle(settings.timerStyle);
 
   if (intervalChanged) {
     cyclePomos = Math.min(cyclePomos, settings.longBreakInterval);
     renderDots();
   }
 
-  // Reset timer to new duration if paused
   if (!isRunning) switchMode(mode);
 
   closeSettings();
@@ -463,28 +544,97 @@ $saveBtn.addEventListener('click', () => {
 // ─── Audio ────────────────────────────────────────────────────────────────────
 
 function playAlarm() {
+  playSound(settings.alarmSound);
+}
+
+function playSound(name) {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    // Three rising notes: a pleasant major arpeggio
-    [[0, 523.25], [0.18, 659.25], [0.36, 783.99]].forEach(([delay, freq]) => {
-      const osc  = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
+    const t = ctx.currentTime;
 
-      osc.type = 'sine';
-      osc.frequency.value = freq;
+    if (name === 'chime') {
+      // Soft rising major arpeggio
+      [[0, 523.25], [0.18, 659.25], [0.36, 783.99]].forEach(([delay, freq]) => {
+        const osc = ctx.createOscillator(); const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.type = 'sine'; osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0, t + delay);
+        gain.gain.linearRampToValueAtTime(0.22, t + delay + 0.04);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + delay + 0.7);
+        osc.start(t + delay); osc.stop(t + delay + 0.75);
+      });
 
-      const t = ctx.currentTime + delay;
+    } else if (name === 'bell') {
+      // Single resonant bell with harmonics
+      [[1, 0.22], [2, 0.08], [3, 0.04]].forEach(([harmonic, vol]) => {
+        const osc = ctx.createOscillator(); const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.type = 'sine'; osc.frequency.value = 440 * harmonic;
+        gain.gain.setValueAtTime(vol, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 2.5);
+        osc.start(t); osc.stop(t + 2.6);
+      });
+
+    } else if (name === 'digital') {
+      // Three quick square-wave beeps
+      [0, 0.18, 0.36].forEach(delay => {
+        const osc = ctx.createOscillator(); const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.type = 'square'; osc.frequency.value = 880;
+        gain.gain.setValueAtTime(0.12, t + delay);
+        gain.gain.setValueAtTime(0, t + delay + 0.1);
+        osc.start(t + delay); osc.stop(t + delay + 0.12);
+      });
+
+    } else if (name === 'ding') {
+      // Single clean high ding
+      const osc = ctx.createOscillator(); const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type = 'sine'; osc.frequency.value = 1318.51;
       gain.gain.setValueAtTime(0, t);
-      gain.gain.linearRampToValueAtTime(0.22, t + 0.04);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.65);
-
-      osc.start(t);
-      osc.stop(t + 0.7);
-    });
+      gain.gain.linearRampToValueAtTime(0.28, t + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 1.2);
+      osc.start(t); osc.stop(t + 1.25);
+    }
   } catch (_) { /* audio unavailable */ }
 }
+
+// ─── Sound Picker ────────────────────────────────────────────────────────────
+
+let pendingSound = settings.alarmSound;
+
+$soundOptions.addEventListener('click', e => {
+  const btn = e.target.closest('.sound-btn');
+  if (!btn) return;
+  pendingSound = btn.dataset.sound;
+  $soundOptions.querySelectorAll('.sound-btn').forEach(b => b.classList.toggle('selected', b === btn));
+});
+
+$previewSound.addEventListener('click', () => playSound(pendingSound));
+
+// ─── Timer Style ─────────────────────────────────────────────────────────────
+
+let pendingTimerStyle = settings.timerStyle;
+
+$styleOptions.addEventListener('click', e => {
+  const btn = e.target.closest('.style-btn');
+  if (!btn) return;
+  pendingTimerStyle = btn.dataset.style;
+  $styleOptions.querySelectorAll('.style-btn').forEach(b => b.classList.toggle('selected', b === btn));
+});
+
+function applyTimerStyle(style) {
+  document.querySelector('.timer-card').classList.toggle('timer-minimal', style === 'minimal');
+}
+
+// ─── Focus Mode ──────────────────────────────────────────────────────────────
+
+$focusModeBtn.addEventListener('click', () => {
+  focusModeActive = !focusModeActive;
+  document.querySelector('.app').classList.toggle('focus-mode', focusModeActive);
+  $focusModeBtn.textContent = focusModeActive ? 'Exit Focus' : 'Focus Mode';
+  $focusModeBtn.classList.toggle('active', focusModeActive);
+});
 
 // ─── Utils ───────────────────────────────────────────────────────────────────
 
