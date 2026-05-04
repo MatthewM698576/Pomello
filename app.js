@@ -20,18 +20,19 @@ const DEFAULT_SETTINGS = {
 let settings = loadSettings();
 let theme = localStorage.getItem('pomello_theme') || 'dark';
 let tasks = loadTasks();
-let mode = 'work';
-let timeLeft = settings.workDuration * 60;
-let totalTime = settings.workDuration * 60;
+const savedState = loadState();
+let mode = savedState.mode || 'work';
+let timeLeft = { work: settings.workDuration, shortBreak: settings.shortBreak, longBreak: settings.longBreak }[mode] * 60;
+let totalTime = timeLeft;
 let isRunning = false;
 let intervalId = null;
 let startTimestamp = null;
 let startTimeLeft = null;
 let autoStartCountdownId = null;
 let pomodorosCompleted = 0;
-let focusModeActive = false;
-let cyclePomos = 0;
-let currentTaskId = null;
+let focusModeActive = savedState.focusModeActive || false;
+let cyclePomos = savedState.cyclePomos || 0;
+let currentTaskId = savedState.currentTaskId || null;
 
 // ─── DOM ──────────────────────────────────────────────────────────────────────
 
@@ -83,6 +84,14 @@ function init() {
   applyThemeIcon();
   applyModeColor(mode);
   applyTimerStyle(settings.timerStyle);
+
+  $tabs.forEach(t => t.classList.toggle('active', t.dataset.mode === mode));
+
+  if (focusModeActive) {
+    document.querySelector('.app').classList.add('focus-mode');
+    $focusModeBtn.textContent = 'Exit Focus';
+    $focusModeBtn.classList.add('active');
+  }
 
   updateDisplay();
   setRingInstant(1);
@@ -168,6 +177,7 @@ function switchMode(newMode) {
   updateDisplay();
   setRingInstant(1);
   updateStartBtn();
+  saveState();
 }
 
 // ─── Timer ────────────────────────────────────────────────────────────────────
@@ -199,6 +209,7 @@ $skipBtn.addEventListener('click', () => {
   } else {
     switchMode('work');
   }
+  saveState();
 });
 
 function startTimer() {
@@ -262,6 +273,7 @@ function onSessionComplete() {
     switchMode('work');
   }
 
+  saveState();
   if (settings.autoStart) beginAutoStart();
 }
 
@@ -345,6 +357,7 @@ $clearDone.addEventListener('click', () => {
     currentTaskId = null;
   }
   saveTasks();
+  saveState();
   renderTasks();
   renderCurrentTask();
   $taskDropdown.classList.remove('open');
@@ -354,6 +367,7 @@ document.getElementById('clear-all').addEventListener('click', () => {
   tasks = [];
   currentTaskId = null;
   saveTasks();
+  saveState();
   renderTasks();
   renderCurrentTask();
   $taskDropdown.classList.remove('open');
@@ -426,6 +440,7 @@ function deleteTask(id) {
   tasks = tasks.filter(t => t.id !== id);
   if (currentTaskId === id) currentTaskId = null;
   saveTasks();
+  saveState();
   renderTasks();
   renderCurrentTask();
 }
@@ -434,6 +449,7 @@ function setActiveTask(id) {
   currentTaskId = currentTaskId === id ? null : id;
   renderTasks();
   renderCurrentTask();
+  saveState();
 }
 
 function renderCurrentTask() {
@@ -444,6 +460,7 @@ function renderCurrentTask() {
   } else {
     currentTaskId = null;
     $currentTaskBar.classList.remove('visible');
+    saveState();
   }
 }
 
@@ -469,6 +486,17 @@ function loadTasks() {
 
 function saveTasks() {
   localStorage.setItem('pomello_tasks', JSON.stringify(tasks));
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem('pomello_state');
+    return raw ? JSON.parse(raw) : {};
+  } catch { return {}; }
+}
+
+function saveState() {
+  localStorage.setItem('pomello_state', JSON.stringify({ mode, cyclePomos, currentTaskId, focusModeActive }));
 }
 
 // ─── Settings Modal ───────────────────────────────────────────────────────────
@@ -634,6 +662,7 @@ $focusModeBtn.addEventListener('click', () => {
   document.querySelector('.app').classList.toggle('focus-mode', focusModeActive);
   $focusModeBtn.textContent = focusModeActive ? 'Exit Focus' : 'Focus Mode';
   $focusModeBtn.classList.toggle('active', focusModeActive);
+  saveState();
 });
 
 // ─── Utils ───────────────────────────────────────────────────────────────────
